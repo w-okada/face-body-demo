@@ -22,7 +22,7 @@ class FaceSwap {
   private frd:FacemeshRenderer
 
   constructor(glCanvas:HTMLCanvasElement, width:number, height:number){
-    this.glCanvas = glCanvas
+    this.glCanvasOut = glCanvas
     this.glCanvas.width  = width
     this.glCanvas.height = height
     this.glCanvasOut.width= width
@@ -47,8 +47,8 @@ class FaceSwap {
   swapFace(videoFrame:HTMLCanvasElement, maskPrediction:facemesh.AnnotatedPrediction[]):HTMLCanvasElement{
     const gl = this.glCanvas.getContext("webgl")!
     this.frd.drawFacemesh(gl, videoFrame, maskPrediction)
-    // const ctx = this.glCanvasOut.getContext("2d")!
-    // ctx.drawImage(this.glCanvasOut,0,0)
+    const ctx = this.glCanvasOut.getContext("2d")!
+    ctx.drawImage(this.glCanvas,0,0)
     return this.glCanvasOut
   }
 

@@ -61,7 +61,7 @@ export class FacemeshRenderer{
     private maskPrediction?:facemesh.AnnotatedPrediction[]
     /////
     constructor(gl:WebGLRenderingContext, w:number, h:number){
-        gl.clearColor (0.7, 0.7, 0.7, 1.0);
+        gl.clearColor (0.0, 0.0, 0.0, 0.0);
         gl.clear (gl.COLOR_BUFFER_BIT);
         
         gl.bindFramebuffer (gl.FRAMEBUFFER, null);
@@ -133,7 +133,7 @@ export class FacemeshRenderer{
             let alpha = 1.0
             for (let j = 0; j < face_countour_idx.length; j ++){
                 if (i == face_countour_idx[j]){
-                    alpha = 0.5
+                    alpha = 0.8
                     break
                 }
             }
@@ -185,12 +185,6 @@ export class FacemeshRenderer{
         this.render_2d_scene (gl, texid, videoFramePrediction, 
             videoFrameCanvas.width, videoFrameCanvas.height, 
             this.masktexId!, this.maskPrediction!);
-//     // const img_width = this.imageElementRef.current!!.width
-//     // const img_height = this.imageElementRef.current!!.height
-//     // // this.landmarkCanvasRef.current!!.width  = img_width
-//     // // this.landmarkCanvasRef.current!!.height = img_height
-//     // const ctx2 = this.landmarkCanvasRef.current!!.getContext("2d")!!
-//     // ctx2.drawImage(this.outpuCanvas,0,0,this.landmarkCanvasRef.current!!.width, this.landmarkCanvasRef.current!!.height)
     }
 
 
@@ -213,7 +207,7 @@ export class FacemeshRenderer{
             let flip = 0
             //r2d.draw_2d_texture (gl, texid, tx, ty, tw, th, flip)
 
-            let mask_color = [1.0, 1.0, 1.0, 1.0];
+            let mask_color = [0.4, 0.4, 0.4, 0.6];
 
 
             for (let i = 0; i < face_predictions.length; i++) {
@@ -243,34 +237,6 @@ export class FacemeshRenderer{
                     this.draw_facemesh_tri_tex(gl, this.masktexId, face_vtx, face_uv, mask_color, false, flip_h)
                 }
             }
-
-
-
-        /* render 2D mask image */
-        if (mask_predictions.length > 0){
-        const s_masktex_region = this.calc_size_to_fit (tex_w, tex_h, tex_w, tex_h);
-        
-            let texid = this.masktexId;
-            let tx = 5;
-            let ty = 60;
-            let tw = s_masktex_region.tex_w * 0.3;
-            let th = s_masktex_region.tex_h * 0.3;
-            let radius = 2;
-            // r2d.draw_2d_texture (gl, texid, tx, ty, tw, th, 0)
-            // r2d.draw_2d_rect (gl, tx, ty, tw, th, [1.0, 1.0, 1.0, 1.0], 3.0);
-
-            if (mask_predictions.length > 0)
-            {
-                const mask_keypoints = mask_predictions[0].scaledMesh as Coords3D;
-                for (let i = 0; i < mask_keypoints.length; i++)
-                {
-                    let p = mask_keypoints[i];
-                    const x = p[0] / this.masktexImage!.width  * tw + tx;
-                    const y = p[1] / this.masktexImage!.height * th + ty;
-    //                r2d.draw_2d_fillrect (gl, x - radius/2, y - radius/2, radius,  radius, color);
-                }
-            }
-        }
     }
 
 

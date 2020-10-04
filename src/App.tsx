@@ -14,15 +14,12 @@ import { FacemeshRenderer } from './FaceswapRenderer';
 class FaceSwap {
   private _maskImage?:HTMLCanvasElement
   private _maskPrediction?: facemesh.AnnotatedPrediction[]
-  private _targetImage?:HTMLImageElement
-  private _targetPrediction?: facemesh.AnnotatedPrediction[]
   
   private glCanvas    = document.createElement("canvas")
   private glCanvasOut = document.createElement("canvas")
   private frd:FacemeshRenderer
 
-  constructor(glCanvas:HTMLCanvasElement, width:number, height:number){
-    this.glCanvasOut = glCanvas
+  constructor(width:number, height:number){
     this.glCanvas.width  = width
     this.glCanvas.height = height
     this.glCanvasOut.width= width
@@ -48,8 +45,12 @@ class FaceSwap {
     const gl = this.glCanvas.getContext("webgl")!
     this.frd.drawFacemesh(gl, videoFrame, maskPrediction)
     const ctx = this.glCanvasOut.getContext("2d")!
+    ctx.fillStyle = "rgba(0,0,0,0.0)";
+    ctx.clearRect(0,0,this.glCanvasOut.width,this.glCanvasOut.height)
+    ctx.fillRect(0,0,this.glCanvasOut.width,this.glCanvasOut.height)
     ctx.drawImage(this.glCanvas,0,0)
     return this.glCanvasOut
+    // return ctx.getImageData(0, 0, this.glCanvasOut.width, this.glCanvasOut.height)
   }
 
 
@@ -81,29 +82,7 @@ class App extends React.Component {
   bodypix_prediction:bodyPix.SemanticPersonSegmentation|null=null
   maskPrediction:facemesh.AnnotatedPrediction[]|null =null
 
-  targetCanvas = (()=>{
-    const c = document.createElement("canvas")
-    c.width=200
-    c.height=200
-    return c
-  })()
-
-  outpuCanvas = (()=>{
-    const c = document.createElement("canvas")
-    c.width=200
-    c.height=200
-    return c
-  })()
-
   private inputVideoElement = document.createElement("video")
-
-
-//   lastTime = performance.now();
-//   first_predict = true
-
-
-
-
 
   handleResult = (videoFrame:HTMLCanvasElement, prediction:facemesh.AnnotatedPrediction[]):HTMLCanvasElement =>{
     const ctx = this.landmarkCanvasRef.current!.getContext("2d")!!
@@ -111,6 +90,7 @@ class App extends React.Component {
 
     console.log(prediction)
 
+    //// Drawing mesh
     prediction!.forEach(x=>{
       const keypoints = x.scaledMesh as Coords3D
 //      const keypoints = x.mesh as Coords3D
@@ -133,13 +113,6 @@ class App extends React.Component {
     
     return this.faceswap!.swapFace(videoFrame, prediction)!
   }
-
-
-
-
-//   masktex_id:any = null
-//   masktex_image:any = null
-
   
   componentDidMount() {
 
@@ -149,14 +122,15 @@ class App extends React.Component {
     Promise.all([initFacemeshPromise, initBodypixPromis]).then(()=>{
       console.log("Both AI Model is initialized!")
       // Faceswap main process starting..
-      this.faceswap = new FaceSwap(this.landmarkCanvasGLRef.current!, 640,480)
+      this.faceswap = new FaceSwap(640,480)
       this.imageElementRef.current!.onload = ()=>{
         console.log("image element onload ed")
         this.predictMask(this.imageElementRef.current!)
         this.predictVideoFrame()
       }
 //      this.imageElementRef.current!.src="https://www.sponichi.co.jp/entertainment/news/2019/10/04/jpeg/20191004s00041000331000p_view.jpg"
-      this.imageElementRef.current!.src="https://pbs.twimg.com/media/EjKgWJRU8AAIGue?format=jpg&name=small"
+//      this.imageElementRef.current!.src="https://pbs.twimg.com/media/EjKgWJRU8AAIGue?format=jpg&name=small"
+      this.imageElementRef.current!.src="/ai_face01.jpeg"
       
       // this.predictMask(this.imageElementRef.current!)
       // this.predictVideoFrame()
@@ -206,9 +180,10 @@ class App extends React.Component {
     Promise.all([facemeshPromise, bodypixPromise]).then(predictions=>{
       console.log("predict video frame done!.",predictions)
       const out = this.handleResult(this.videoFrameCanvasRef.current!, predictions[0] as facemesh.AnnotatedPrediction[])
-      // const ctx = this.landmarkCanvasGLRef.current!.getContext("2d")!
-      // ctx.drawImage(out,0,0)
-      // ctx.fillText("AAAAAAAAAAAAAAa",10,10)
+      const ctx = this.landmarkCanvasGLRef.current!.getContext("2d")!
+      ctx.drawImage(this.videoFrameCanvasRef.current!,0,0)
+      ctx.drawImage(out,0,0)
+      ctx.fillText("AAAAAAAAAAAAAAa",10,10)
       requestAnimationFrame(() => this.predictVideoFrame())
     })
   }

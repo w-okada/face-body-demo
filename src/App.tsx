@@ -1,60 +1,17 @@
 import React from 'react';
 import logo from './logo.svg';
 import './App.css';
-import {FacemeshWorkerManager} from 'facemesh-worker-js'
-import {BodypixWorkerManager,  ModelConfigMobileNetV1_05} from 'bodypix-worker-js'
+import {FacemeshWorkerManager} from '@dannadori/facemesh-worker-js'
+import {BodypixWorkerManager,  ModelConfigMobileNetV1_05} from '@dannadori/bodypix-worker-js'
 import * as facemesh from '@tensorflow-models/facemesh'
 import * as bodyPix from '@tensorflow-models/body-pix'
 import { Coords3D } from '@tensorflow-models/facemesh/dist/util';
-import { TRIANGULATION } from './traiangulation';
+import { TRIANGULATION } from './Faceswap/traiangulation';
 import { Icon, Label, Dropdown } from 'semantic-ui-react';
 import { getDeviceLists, getVideoDevice } from './CameraUtil';
-import { FacemeshRenderer } from './FaceswapRenderer';
-
-class FaceSwap {
-  private _maskImage?:HTMLCanvasElement
-  private _maskPrediction?: facemesh.AnnotatedPrediction[]
-  
-  private glCanvas    = document.createElement("canvas")
-  private glCanvasOut = document.createElement("canvas")
-  private frd:FacemeshRenderer
-
-  constructor(width:number, height:number){
-    this.glCanvas.width  = width
-    this.glCanvas.height = height
-    this.glCanvasOut.width= width
-    this.glCanvasOut.height=height
-    this.frd = new FacemeshRenderer(
-      this.glCanvas.getContext("webgl")!, 
-      this.glCanvas.width,
-      this.glCanvas.height
-    )
-
-
-  }
-
-  setMask(maskImage:HTMLCanvasElement, maskPrediction:facemesh.AnnotatedPrediction[]){
-    console.log("set mask")
-    this._maskImage = maskImage
-    this._maskPrediction = maskPrediction
-    this.frd.setMask(this.glCanvas.getContext("webgl")!, this._maskImage, this._maskPrediction)
-  }
-
-
-  swapFace(videoFrame:HTMLCanvasElement, maskPrediction:facemesh.AnnotatedPrediction[]):HTMLCanvasElement{
-    const gl = this.glCanvas.getContext("webgl")!
-    this.frd.drawFacemesh(gl, videoFrame, maskPrediction)
-    const ctx = this.glCanvasOut.getContext("2d")!
-    ctx.fillStyle = "rgba(0,0,0,0.0)";
-    ctx.clearRect(0,0,this.glCanvasOut.width,this.glCanvasOut.height)
-    ctx.fillRect(0,0,this.glCanvasOut.width,this.glCanvasOut.height)
-    ctx.drawImage(this.glCanvas,0,0)
-    return this.glCanvasOut
-    // return ctx.getImageData(0, 0, this.glCanvasOut.width, this.glCanvasOut.height)
-  }
-
-
-}
+import { FacemeshRenderer } from './Faceswap/FaceswapRenderer';
+import { FaceSwap } from './Faceswap/Faceswap';
+import { AsciiArt } from './AsciiArt/AsciiArt';
 
 
 
@@ -65,8 +22,11 @@ class App extends React.Component {
   landmarkCanvasRef = React.createRef<HTMLCanvasElement>()
   landmarkCanvasGLRef =  React.createRef<HTMLCanvasElement>()
   videoFrameCanvasRef = React.createRef<HTMLCanvasElement>()
+
+
   facemesh:FacemeshWorkerManager = new FacemeshWorkerManager()
   bodypix:BodypixWorkerManager = new BodypixWorkerManager()
+  asciiart:AsciiArt = new AsciiArt()
 
 
   private dropdownVideoInput:any = null
@@ -171,19 +131,25 @@ class App extends React.Component {
     })
   }
 
-  predictVideoFrame = () =>{
+  predictVideoFrame = async () =>{
     const ctx = this.videoFrameCanvasRef.current!.getContext("2d")!
     ctx.drawImage(this.inputVideoElement,0,0,this.videoFrameCanvasRef.current!.width,this.videoFrameCanvasRef.current!.height)
 
     const facemeshPromise = this.facemesh.predict(this.videoFrameCanvasRef.current!)
     const bodypixPromise = this.bodypix.predict(this.videoFrameCanvasRef.current!)
-    Promise.all([facemeshPromise, bodypixPromise]).then(predictions=>{
+    Promise.all([facemeshPromise, bodypixPromise]).then(async predictions=>{
       console.log("predict video frame done!.",predictions)
       const out = this.handleResult(this.videoFrameCanvasRef.current!, predictions[0] as facemesh.AnnotatedPrediction[])
       const ctx = this.landmarkCanvasGLRef.current!.getContext("2d")!
       ctx.drawImage(this.videoFrameCanvasRef.current!,0,0)
       ctx.drawImage(out,0,0)
-      ctx.fillText("AAAAAAAAAAAAAAa",10,10)
+
+      const s = performance.now()
+      const ascii = await this.asciiart.convert(this.videoFrameCanvasRef.current!)
+      ctx.drawImage(ascii,0,0)
+      const e = performance.now()
+      console.log("ASCII ART: ",e-s)
+
       requestAnimationFrame(() => this.predictVideoFrame())
     })
   }

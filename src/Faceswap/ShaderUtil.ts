@@ -36,26 +36,6 @@ export const generate_shader = function (gl:WebGLRenderingContext, str_vs:string
     gl.deleteShader (vs);
     gl.deleteShader (fs);
 
-    const sobj = {
-        program: prog,
-        loc_vtx: gl.getAttribLocation (prog, `a_Vertex`),
-        loc_clr: gl.getAttribLocation (prog, `a_Color` ),
-        loc_nrm: gl.getAttribLocation (prog, `a_Normal` ),
-        loc_uv : gl.getAttribLocation (prog, `a_TexCoord`),
-        loc_smp: gl.getUniformLocation (prog, `u_sampler`),
-    };
-    return sobj;
-}
-
-export const generate_shader2 = function (gl:WebGLRenderingContext, str_vs:string, str_fs:string)
-{
-    const vs = compile_shader_text (gl, gl.VERTEX_SHADER,   str_vs)!;
-    const fs = compile_shader_text (gl, gl.FRAGMENT_SHADER, str_fs)!;
-    const prog = link_shaders (gl, vs, fs);
-
-    gl.deleteShader (vs);
-    gl.deleteShader (fs);
-
     return prog;
 }
 

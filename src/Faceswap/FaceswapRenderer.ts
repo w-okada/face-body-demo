@@ -1,8 +1,11 @@
-import { generate_shader2 } from "./ShaderUtil";
+import { generate_shader } from "./ShaderUtil";
 import { TRIANGULATION } from "./traiangulation";
-import { matrix_identity, matrix_mult } from "./MatrixUtil";
+import { matrix_identity, matrix_mult } from "../MatrixUtil";
 import * as facemesh from '@tensorflow-models/facemesh'
 import { Coords3D } from "@tensorflow-models/facemesh/dist/util";
+
+
+
 export class FacemeshRenderer{
 
     private strVS = `
@@ -69,7 +72,7 @@ export class FacemeshRenderer{
         gl.scissor  (0, 0, w, h);
 
 
-        this.program      = generate_shader2 (gl, this.strVS, this.strFS)
+        this.program      = generate_shader (gl, this.strVS, this.strFS)
 
         this.loc_vtx      = gl.getAttribLocation (this.program, `a_Vertex`)
         this.loc_clr      = gl.getAttribLocation (this.program, `a_Color` )

@@ -9,7 +9,10 @@ export class FaceSwap {
     private glCanvasOut = document.createElement("canvas")
     private frd:FacemeshRenderer
   
-    constructor(width:number, height:number){
+    constructor(width:number, height:number, testCanvas:HTMLCanvasElement|null=null){
+      if(testCanvas!==null){
+        this.glCanvas = testCanvas
+      }
       this.glCanvas.width  = width
       this.glCanvas.height = height
       this.glCanvasOut.width= width

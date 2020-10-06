@@ -196,7 +196,7 @@ export class FacemeshRenderer{
             
             const s_srctex_region = this.calc_size_to_fit (tex_w, tex_h, tex_w, tex_h);
 
-            let color = [1.0, 1.0, 1.0, 0.5]
+            let color = [1.0, 1.0, 1.0, 1.0]
             let radius = 5;
             let tx = s_srctex_region.tex_x;
             let ty = s_srctex_region.tex_y;
@@ -210,7 +210,7 @@ export class FacemeshRenderer{
             let flip = 0
             //r2d.draw_2d_texture (gl, texid, tx, ty, tw, th, flip)
 
-            let mask_color = [0.4, 0.4, 0.4, 0.6];
+            let mask_color = [0.9, 0.9, 0.9, 0.99];
 
 
             for (let i = 0; i < face_predictions.length; i++) {

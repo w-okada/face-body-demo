@@ -1,4 +1,4 @@
-export class AsciiArt{
+export class AsciiArta{
     private _asciiStr = " .,:;i1tfLCG08@"
     private _asciiCharacters = (this._asciiStr).split("");
     set asciiString(val:string){

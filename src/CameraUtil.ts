@@ -1,17 +1,13 @@
 
-
-
 export const getVideoDevice = async (deviceId:string): Promise<MediaStream|null>=>{
-
     const webCamPromise = navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { deviceId: deviceId,
-            // width: { ideal: 1280 },
-            // height: { ideal: 720 }
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         }
     })
     return webCamPromise
- 
 }
 
 

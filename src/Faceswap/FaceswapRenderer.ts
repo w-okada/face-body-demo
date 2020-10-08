@@ -152,6 +152,7 @@ export class FacemeshRenderer{
 
     /////
     setMask = (gl:WebGLRenderingContext, maskImage:HTMLCanvasElement, maskPrediction:facemesh.AnnotatedPrediction[]) =>{
+        console.log("setMask", maskPrediction)
         const masktexId = gl.createTexture()!;
 
 

@@ -1,22 +1,16 @@
 import React from 'react';
-import logo from './logo.svg';
 import './App.css';
 import { FacemeshWorkerManager } from '@dannadori/facemesh-worker-js'
 import { BodypixWorkerManager, ModelConfigMobileNetV1_05 } from '@dannadori/bodypix-worker-js'
 import { OpenCVWorkerManager, OpenCVFunctionType } from '@dannadori/opencv-worker-js'
+import { AsciiArtWorkerManager} from '@dannadori/asciiart-worker-js'
 import * as facemesh from '@tensorflow-models/facemesh'
 import * as bodyPix from '@tensorflow-models/body-pix'
-import { Coords3D } from '@tensorflow-models/facemesh/dist/util';
-import { TRIANGULATION } from './Faceswap/traiangulation';
-import { Icon, Label, Dropdown } from 'semantic-ui-react';
+import { Dropdown } from 'semantic-ui-react';
 import { getDeviceLists, getVideoDevice } from './CameraUtil';
-import { FacemeshRenderer } from './Faceswap/FaceswapRenderer';
 import { FaceSwap } from './Faceswap/Faceswap';
-import { AsciiArt } from './AsciiArt/AsciiArt';
-import { render } from '@testing-library/react';
 
-
-
+import { VirtualBackground } from './VirtualBackground/VirtualBackground';
 
 class App extends React.Component {
   constructor(props: any) {
@@ -49,8 +43,9 @@ class App extends React.Component {
 
   facemesh: FacemeshWorkerManager = new FacemeshWorkerManager()
   bodypix: BodypixWorkerManager = new BodypixWorkerManager()
-  asciiart: AsciiArt = new AsciiArt()
+  asciiart: AsciiArtWorkerManager = new AsciiArtWorkerManager()
   opencv:OpenCVWorkerManager = new OpenCVWorkerManager()
+  vbg: VirtualBackground = new VirtualBackground()
 
   private dropdownVideoInput: any = null
 
@@ -65,34 +60,32 @@ class App extends React.Component {
   bodypix_prediction: bodyPix.SemanticPersonSegmentation | null = null
   maskPrediction: facemesh.AnnotatedPrediction[] | null = null
 
-  private inputVideoElement = document.createElement("video")
-
   handleResult = (videoFrame: HTMLCanvasElement, prediction: facemesh.AnnotatedPrediction[]): HTMLCanvasElement => {
-    const ctx = this.landmarkCanvasRef.current!.getContext("2d")!!
-    ctx.clearRect(0, 0, this.landmarkCanvasRef.current!.width, this.landmarkCanvasRef.current!.height)
+    // const ctx = this.landmarkCanvasRef.current!.getContext("2d")!!
+    // ctx.clearRect(0, 0, this.landmarkCanvasRef.current!.width, this.landmarkCanvasRef.current!.height)
 
-    console.log("Facemesh prediction:", prediction)
+    //console.log("Facemesh prediction:", prediction)
 
-    //// Drawing mesh
-    prediction!.forEach(x => {
-      const keypoints = x.scaledMesh as Coords3D
-      //      const keypoints = x.mesh as Coords3D
-      for (let i = 0; i < TRIANGULATION.length / 3; i++) {
-        const points = [
-          TRIANGULATION[i * 3],
-          TRIANGULATION[i * 3 + 1],
-          TRIANGULATION[i * 3 + 2]
-        ].map(index => keypoints[index]);
-        const region = new Path2D();
-        region.moveTo(points[0][0], points[0][1]);
-        for (let i = 1; i < points.length; i++) {
-          const point = points[i];
-          region.lineTo(point[0], point[1]);
-        }
-        region.closePath();
-        ctx.stroke(region);
-      }
-    })
+    // //// Drawing mesh
+    // prediction!.forEach(x => {
+    //   const keypoints = x.scaledMesh as Coords3D
+    //   //      const keypoints = x.mesh as Coords3D
+    //   for (let i = 0; i < TRIANGULATION.length / 3; i++) {
+    //     const points = [
+    //       TRIANGULATION[i * 3],
+    //       TRIANGULATION[i * 3 + 1],
+    //       TRIANGULATION[i * 3 + 2]
+    //     ].map(index => keypoints[index]);
+    //     const region = new Path2D();
+    //     region.moveTo(points[0][0], points[0][1]);
+    //     for (let i = 1; i < points.length; i++) {
+    //       const point = points[i];
+    //       region.lineTo(point[0], point[1]);
+    //     }
+    //     region.closePath();
+    //     ctx.stroke(region);
+    //   }
+    // })
 
     return this.faceswap!.swapFace(videoFrame, prediction)!
   }
@@ -103,21 +96,12 @@ class App extends React.Component {
     const initFacemeshPromise = this.facemesh.init()
     const initBodypixPromise = this.bodypix.init(ModelConfigMobileNetV1_05)
     const initOpenCVPromise = this.opencv.init()
-    Promise.all([initFacemeshPromise, initBodypixPromise, initOpenCVPromise]).then(() => {
+    const initAsciiArtPromise = this.asciiart.init()
+    
+    Promise.all([initFacemeshPromise, initBodypixPromise, initOpenCVPromise, initAsciiArtPromise]).then(() => {
       console.log("Both AI Model is initialized!")
       // Faceswap main process starting..
       this.faceswap = new FaceSwap(640, 480)
-      // this.faceswap = new FaceSwap(640, 480, this.landmarkCanvasGLRef.current! )
-
-
-      // this.imageElementRef.current!.onload = () => {
-      //   console.log("image element onload ed")
-      // }
-      //      this.imageElementRef.current!.src="https://www.sponichi.co.jp/entertainment/news/2019/10/04/jpeg/20191004s00041000331000p_view.jpg"
-      //      this.imageElementRef.current!.src="https://pbs.twimg.com/media/EjKgWJRU8AAIGue?format=jpg&name=small"
-      // this.imageElementRef.current!.src = "/ai_face01.jpeg"
-
-      // this.predictMask(this.imageElementRef.current!)
       this.predictVideoFrame()
     })
 
@@ -127,17 +111,21 @@ class App extends React.Component {
     })
   }
 
+  facemesh2: FacemeshWorkerManager = new FacemeshWorkerManager()
   predictMask = (mask: HTMLImageElement) => {
-    const maskCanvas = document.createElement("canvas")
-    maskCanvas.width = mask.width
-    maskCanvas.height = mask.height
-    console.log("IMAGE SIZE>>>>>",mask.width, mask.height)
-    const ctx = maskCanvas.getContext("2d")!
-    ctx.drawImage(mask, 0, 0, mask.width, mask.height)
-    this.facemesh.predict(maskCanvas).then(prediction => {
-      console.log("predict mask done...", prediction)
-      // this.faceswap!.setMask(maskCanvas, prediction as facemesh.AnnotatedPrediction[])
-      this.faceswap!.setMask(maskCanvas, prediction as facemesh.AnnotatedPrediction[])
+    const initFacemeshPromise2 = this.facemesh2.init()
+    initFacemeshPromise2.then(()=>{
+      const maskCanvas = document.createElement("canvas")
+      maskCanvas.width = mask.width
+      maskCanvas.height = mask.height
+      const ctx = maskCanvas.getContext("2d")!
+      ctx.drawImage(mask, 0, 0, mask.width, mask.height)
+      console.log("start predicting mask")
+      this.facemesh2.predict(maskCanvas).then(prediction => {
+        console.log("predict mask done...", prediction)
+        // this.faceswap!.setMask(maskCanvas, prediction as facemesh.AnnotatedPrediction[])
+        this.faceswap!.setMask(maskCanvas, prediction as facemesh.AnnotatedPrediction[])
+      })
     })
   }
 
@@ -153,6 +141,7 @@ class App extends React.Component {
   }
 
   private drawBackgroundCanvas = (w:number, h:number) =>{
+    // console.log("image-- drawbg bbb", w, h, this.backgroundInput)
     if(w <= 0 || h <= 0){
       if(this.backgroundInput === "image"){
         w = this.backgroundImageElementRef.current!.width
@@ -160,6 +149,8 @@ class App extends React.Component {
         this.backgroundCanvasElementRef.current!.width=w
         this.backgroundCanvasElementRef.current!.height=h
         const ctx = this.backgroundCanvasElementRef.current!.getContext("2d")!
+        // console.log("image-- drawbg aaa1 ", w, h)
+        // console.log("image-- drawbg aaa2 ", this.backgroundCanvasElementRef.current!.width, this.backgroundCanvasElementRef.current!.height)
         ctx.drawImage(this.backgroundImageElementRef.current!, 0, 0, w, h)    
       }else if(this.backgroundInput === "window" || this.backgroundInput === "movie"){
         w = this.backgroundVideoElementRef.current!.width
@@ -168,7 +159,7 @@ class App extends React.Component {
         this.backgroundCanvasElementRef.current!.height=h
         const ctx = this.backgroundCanvasElementRef.current!.getContext("2d")!
         ctx.drawImage(this.backgroundVideoElementRef.current!, 0, 0, w, h)
-    
+        console.log("movie width", w)
       }else if(this.backgroundInput === "none"){ // use foreground video
         w = this.foregroundVideoElementRef.current!.width
         h = this.foregroundVideoElementRef.current!.height
@@ -186,7 +177,16 @@ class App extends React.Component {
     this.drawForegroundCanvas(640, 480)
     this.drawBackgroundCanvas(-1, -1)
 
-    const promises = []
+    if(this.foregroundCanvasElementRef.current!.width <= 0 ||
+      this.foregroundCanvasElementRef.current!.height <= 0 ||
+      this.backgroundCanvasElementRef.current!.width <= 0 ||
+      this.backgroundCanvasElementRef.current!.height <= 0 ){
+        console.log("reload ",this.foregroundCanvasElementRef.current!.width, this.backgroundCanvasElementRef.current!.width)
+        requestAnimationFrame(() => this.predictVideoFrame())
+        return
+    }
+
+    const promises:(Promise<any>|null)[] = []
     if(this.virtualBackgroundEnable){
       promises.push(this.bodypix.predict(this.foregroundCanvasElementRef.current!))
     }else{
@@ -194,7 +194,7 @@ class App extends React.Component {
     }
 
     if(this.foregroundEffect === "ascii"){
-      promises.push(this.asciiart.convert(this.foregroundCanvasElementRef.current!))
+      promises.push(this.asciiart.predict(this.foregroundCanvasElementRef.current!))
     }else if(this.foregroundEffect === "canny"){
       promises.push(this.opencv.predict(this.foregroundCanvasElementRef.current!, OpenCVFunctionType.Canny))
     }else{
@@ -202,7 +202,7 @@ class App extends React.Component {
     }
 
     if(this.backgroundEffect === "ascii"){
-      promises.push(this.asciiart.convert(this.backgroundCanvasElementRef.current!))
+      promises.push(this.asciiart.predict(this.backgroundCanvasElementRef.current!))
     }else if(this.backgroundEffect === "canny"){
       promises.push(this.opencv.predict(this.backgroundCanvasElementRef.current!, OpenCVFunctionType.Canny))
     }else{
@@ -215,56 +215,52 @@ class App extends React.Component {
       promises.push(null)
     }
 
-    Promise.all(promises).then((results)=>{
-      const bodypixResult = results[0]
-      const foreEffectResult = results[1]
-      const backEffectResult = results[2]
-      const faceswapResult = results[3]
+    Promise.all(promises).then(async (results)=>{
+      console.log(results)
 
-      const currentForegroundCanvas = foreEffectResult ? foreEffectResult:this.foregroundCanvasElementRef.current!
-      const currentBackgroundCanvas = backEffectResult ? backEffectResult:this.backgroundCanvasElementRef.current!
+      const bodypixResult = results[0] as bodyPix.SemanticPersonSegmentation
+      const foreEffectResult = results[1] as ImageBitmap
+      const backEffectResult = results[2] as ImageBitmap
+      const faceswapResult = results[3] as facemesh.AnnotatedPrediction[]
 
-
-      if(faceswapResult){
-        const out = this.handleResult(this.foregroundCanvasElementRef.current!, faceswapResult as facemesh.AnnotatedPrediction[])
-
-        const ctx = this.landmarkCanvasGLRef.current!.getContext("2d")!
-//         ctx.fillText("ADFASDFASDFASFD " + out.width + "  "+out.height,100,100)
-        ctx.drawImage(currentForegroundCanvas as HTMLCanvasElement,0,0)
-        ctx.drawImage(out, 0, 0)
-
+      if(foreEffectResult){
+        this.foregroundCanvasElementRef.current!.getContext("2d")!.drawImage(
+          foreEffectResult,0,0,this.foregroundCanvasElementRef.current!.width, this.foregroundCanvasElementRef.current!.height)
+      }
+      if(backEffectResult){
+        this.backgroundCanvasElementRef.current!.getContext("2d")!.drawImage(
+          backEffectResult,0,0,this.backgroundCanvasElementRef.current!.width, this.backgroundCanvasElementRef.current!.height)
       }
 
+      // let currentForegroundCanvas = foreEffectResult ? foreEffectResult:this.foregroundCanvasElementRef.current!
+      // let currentBackgroundCanvas = backEffectResult ? backEffectResult:this.backgroundCanvasElementRef.current!
 
-      console.log(results)
+      const fs = performance.now()
+      if(faceswapResult){
+        const out = this.handleResult(this.foregroundCanvasElementRef.current!, faceswapResult )
+        const ctx = this.foregroundCanvasElementRef.current!.getContext("2d")!
+        ctx.drawImage(out, 0, 0)
+      }
+      const fe = performance.now()
+      console.log("faceswap time:",fe-fs)
+
+      let outputCanvas = this.foregroundCanvasElementRef.current!
+      if(this.virtualBackgroundEnable){
+        // console.log("outputc:0 ",this.backgroundCanvasElementRef.current!.width, this.backgroundCanvasElementRef.current!.height)
+        outputCanvas = await this.vbg.convert(this.foregroundCanvasElementRef.current!, this.backgroundCanvasElementRef.current!, bodypixResult)
+      }
+      this.landmarkCanvasGLRef.current!.width = 640
+      this.landmarkCanvasGLRef.current!.height = 480
+      // console.log("outputc:1 ",outputCanvas.width, outputCanvas.height)
+      // console.log("outputc:2 ",this.landmarkCanvasGLRef.current!.width, this.landmarkCanvasGLRef.current!.height)
+      this.landmarkCanvasGLRef.current!.getContext("2d")!
+        .drawImage(outputCanvas, 0, 0, this.landmarkCanvasGLRef.current!.width, this.landmarkCanvasGLRef.current!.height)
+      
+
       const e = performance.now()
-      console.log("ASCII ART: ", e - s)
+      console.log("Processing: ", e - s)
       requestAnimationFrame(() => this.predictVideoFrame())
     })
-
-
-
-
-    // const ctx = this.videoFrameCanvasRef.current!.getContext("2d")!
-    // ctx.drawImage(this.inputVideoElement, 0, 0, this.videoFrameCanvasRef.current!.width, this.videoFrameCanvasRef.current!.height)
-
-    // const facemeshPromise = this.facemesh.predict(this.videoFrameCanvasRef.current!)
-    // const bodypixPromise = this.bodypix.predict(this.videoFrameCanvasRef.current!)
-    // Promise.all([facemeshPromise, bodypixPromise]).then(async predictions => {
-    //   console.log("predict video frame done!.", predictions)
-    //   const out = this.handleResult(this.videoFrameCanvasRef.current!, predictions[0] as facemesh.AnnotatedPrediction[])
-    //   const ctx = this.landmarkCanvasGLRef.current!.getContext("2d")!
-    //   ctx.drawImage(this.videoFrameCanvasRef.current!, 0, 0)
-    //   ctx.drawImage(out, 0, 0)
-
-    //   const s = performance.now()
-    //   const ascii = await this.asciiart.convert(this.videoFrameCanvasRef.current!)
-    //   ctx.drawImage(ascii, 0, 0)
-    //   const e = performance.now()
-    //   console.log("ASCII ART: ", e - s)
-
-    //   requestAnimationFrame(() => this.predictVideoFrame())
-    // })
   }
 
 
@@ -278,17 +274,16 @@ class App extends React.Component {
     setForegroundInput: async (deviceId: string) => {
       console.log("select input",deviceId)
       this.foregroundVideoElementRef.current!.pause()
-      const p = await getVideoDevice(deviceId).then(stream => {
+      await getVideoDevice(deviceId).then(stream => {
         if (stream !== null) {
-          this.foregroundVideoElementRef.current!.width = stream.getVideoTracks()[0].getSettings().width!
-          this.foregroundVideoElementRef.current!.height = stream.getVideoTracks()[0].getSettings().height!
+          this.foregroundVideoElementRef.current!.onloadedmetadata = () => {
+            console.log("video--",this.foregroundVideoElementRef.current!.videoWidth)
+            console.log("video--",this.foregroundVideoElementRef.current!.videoHeight)
+            this.foregroundVideoElementRef.current!.width = this.foregroundVideoElementRef.current!.videoWidth
+            this.foregroundVideoElementRef.current!.height = this.foregroundVideoElementRef.current!.videoHeight
+          }
           this.foregroundVideoElementRef.current!.srcObject = stream
           this.foregroundVideoElementRef.current!.play()
-          return new Promise((resolve, reject) => {
-            this.inputVideoElement!.onloadedmetadata = () => {
-              resolve();
-            };
-          });
         }
       }).catch((e) => {
         console.log("DEVICE:error:", e)
@@ -298,6 +293,12 @@ class App extends React.Component {
     },
 
     setForegroundMovie:  (path:string) =>{
+      this.foregroundVideoElementRef.current!.onloadedmetadata = () => {
+        console.log("video--",this.foregroundVideoElementRef.current!.videoWidth)
+        console.log("video--",this.foregroundVideoElementRef.current!.videoHeight)
+        this.foregroundVideoElementRef.current!.width = this.foregroundVideoElementRef.current!.videoWidth
+        this.foregroundVideoElementRef.current!.height = this.foregroundVideoElementRef.current!.videoHeight
+      }
       this.foregroundVideoElementRef.current!.pause()
       this.foregroundVideoElementRef.current!.srcObject = null
       this.foregroundVideoElementRef.current!.src = path
@@ -321,9 +322,13 @@ class App extends React.Component {
         this.virtualBackgroundEnable = false
         this.backgroundInput="none"
       }else{
-        // this.foregroundMediaStream = stream
-        this.backgroundVideoElementRef.current!.width = stream!.getVideoTracks()[0].getSettings().width!
-        this.backgroundVideoElementRef.current!.height = stream!.getVideoTracks()[0].getSettings().height!
+        this.backgroundVideoElementRef.current!.onloadedmetadata = () => {
+          console.log("video--",this.backgroundVideoElementRef.current!.videoWidth)
+          console.log("video--",this.backgroundVideoElementRef.current!.videoHeight)
+          this.backgroundVideoElementRef.current!.width = this.backgroundVideoElementRef.current!.videoWidth
+          this.backgroundVideoElementRef.current!.height = this.backgroundVideoElementRef.current!.videoHeight
+        }
+
         this.backgroundVideoElementRef.current!.srcObject = stream!
         this.backgroundVideoElementRef.current!.play()
         this.virtualBackgroundEnable = true
@@ -332,12 +337,27 @@ class App extends React.Component {
       console.log("backgournd media", stream)
     },
     setBackgroundImage: (path:string) =>{
+      this.backgroundImageElementRef.current!.onload = () => {
+        console.log("image--w1",this.backgroundImageElementRef.current!.naturalWidth)
+        console.log("image--w2",this.backgroundImageElementRef.current!.naturalHeight)
+        this.backgroundImageElementRef.current!.width = this.backgroundImageElementRef.current!.naturalWidth
+        this.backgroundImageElementRef.current!.height = this.backgroundImageElementRef.current!.naturalHeight
+        console.log("image--w3",this.backgroundImageElementRef.current!.width)
+        console.log("image--w4",this.backgroundImageElementRef.current!.height)
+      }
+
       this.virtualBackgroundEnable = true
       this.backgroundImageElementRef.current!.src = path
       this.backgroundInput="image"
       console.log("background image", path)
     },
     setBackgroundMovie: (path:string) =>{
+      this.backgroundVideoElementRef.current!.onloadedmetadata = () => {
+        console.log("video--",this.backgroundVideoElementRef.current!.videoWidth)
+        console.log("video--",this.backgroundVideoElementRef.current!.videoHeight)
+        this.backgroundVideoElementRef.current!.width = this.backgroundVideoElementRef.current!.videoWidth
+        this.backgroundVideoElementRef.current!.height = this.backgroundVideoElementRef.current!.videoHeight
+      }
       this.backgroundVideoElementRef.current!.pause()
       this.backgroundVideoElementRef.current!.srcObject = null
       this.backgroundVideoElementRef.current!.src = path
@@ -367,20 +387,43 @@ class App extends React.Component {
       }
       console.log("faceswap", path) 
     },
+
+    //////// etc ////////
+    setResolution: (type:string, resolution:number[]) => {
+      console.log("setResolution:",type, resolution)
+      switch(type){
+        case "front":
+          console.log("back fro")
+          this.foregroundVideoElementRef.current!.width = resolution[0]
+          this.foregroundVideoElementRef.current!.height = resolution[1]
+          break
+        case "back":
+          console.log("back reso")
+          this.backgroundVideoElementRef.current!.width = resolution[0]
+          this.backgroundVideoElementRef.current!.height = resolution[1]
+          break
+      }
+    }
   }
 
   render() {
     console.log("rendor")
     return (
       <div>
-        {/* <img  crossOrigin="anonymous" ref={this.imageElementRef} src="https://www.sponichi.co.jp/entertainment/news/2019/10/04/jpeg/20191004s00041000331000p_view.jpg"></img> */}
-        {/* <img crossOrigin="anonymous" ref={this.imageElementRef} src="https://pbs.twimg.com/media/EjKgWJRU8AAIGue?format=jpg&name=small"></img>
-        <img crossOrigin="anonymous" ref={this.dummyImageElementRef} src="/white.png"></img> */}
+        {/* <canvas ref={this.landmarkCanvasRef} style={{ display: "none", position: "absolute", top:"0px", left:"0px"}}/>
+        <canvas ref={this.videoFrameCanvasRef} width="640px" height="480px" style={{ display: "none"}}/>
+        <canvas ref={this.landmarkCanvasRef} width="640px" height="480px" style={{ display: "none"}}/> */}
+        <canvas ref={this.landmarkCanvasGLRef} width="640px" height="480px" onWheel={(e)=>{
+          if(e.deltaY<0){
+            console.log("go")
+            this.foregroundVideoElementRef.current!.currentTime += 10
+          }else{
+            console.log("back")
+            this.foregroundVideoElementRef.current!.currentTime -= 10
+          }
+        }}/>
+        <img ref={this.faceswapMaskImageElementRef} style={{ width:"480px", height:"320"}} />
 
-        <canvas ref={this.landmarkCanvasRef} style={{ position: "absolute", top:"0px", left:"0px"}}/>
-        <canvas ref={this.videoFrameCanvasRef} width="640px" height="480px" />
-        <canvas ref={this.landmarkCanvasRef} width="640px" height="480px" />
-        <canvas ref={this.landmarkCanvasGLRef} width="640px" height="480px" />
 
         <span style={{ marginLeft: "10px" }}>
           VideoSource <ForegroundInputList {...this.state} callbacks={this.callbacks} />
@@ -388,22 +431,20 @@ class App extends React.Component {
           <BackgroundInputList {...this.state} callbacks={this.callbacks}/>
           <BackgroundEffect  {...this.state} callbacks={this.callbacks}/>
           <FaceSwapEffect {...this.state} callbacks={this.callbacks}/>
+
+          <ResolutionList {...this.state} callbacks={this.callbacks} type="front"/>
+          <ResolutionList {...this.state} callbacks={this.callbacks} type="back"/>
+
         </span>
 
         <div>
         <video ref={this.foregroundVideoElementRef} style={{ width:"480px", height:"320"}} playsInline />
         <video ref={this.backgroundVideoElementRef} style={{ width:"480px", height:"320"}} playsInline />
-        <img ref={this.backgroundImageElementRef} style={{ width:"480px", height:"320"}} />
-        <img ref={this.faceswapMaskImageElementRef} style={{ width:"480px", height:"320"}} />
+        <img ref={this.backgroundImageElementRef} style={{ display: "none", width:"480px", height:"320"}} />
 
 
         <canvas ref={this.foregroundCanvasElementRef} width="1280px" style={{width:"480px", height:"320"}}/>
         <canvas ref={this.backgroundCanvasElementRef} width="1280px" style={{width:"480px", height:"320"}}/>
-        {/* <video ref={this.foregroundVideoElementRef} width="1280px" style={{ display: "none"}} playsInline />
-        <video ref={this.backgroundVideoElementRef} width="1280px" style={{ display: "none"}} playsInline />
-
-        <canvas ref={this.foregroundCanvasElementRef} width="1280px" style={{ display: "none"}}/>
-        <canvas ref={this.backgroundCanvasElementRef} width="1280px" style={{ display: "none"}}/> */}
         </div>
       </div>
     )
@@ -411,7 +452,27 @@ class App extends React.Component {
 }
 
 
-
+const ResolutionList = (props: any) =>{
+  const resolution=[
+    [320,240],
+    [480,320],
+    [640,480],
+    [960,640],
+    [1280,960]
+  ]
+    
+  return (
+    <div>
+      <Dropdown text={'resolution_'+props.type} floating labeled button  >
+        <Dropdown.Menu>
+          <Dropdown.Header content='select...' />
+          <Dropdown.Divider />
+          {resolution.map(x=><Dropdown.Item text={x[0]+"x"+x[1]} onClick={()=>{props.callbacks.setResolution(props.type,x)}} />)}
+        </Dropdown.Menu>
+      </Dropdown>
+    </div>
+  )
+}
 
 const FaceSwapEffect = (props: any) =>{
   const onoff = ["off","on"]

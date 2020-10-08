@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
-    "@dannadori/bodypix-worker-js": "^1.0.7",
-    "@dannadori/facemesh-worker-js": "^1.0.11",
-    "@dannadori/opencv-worker-js": "^1.0.3",
+    "@dannadori/asciiart-worker-js": "^1.0.3",
+    "@dannadori/bodypix-worker-js": "^1.0.10",
+    "@dannadori/facemesh-worker-js": "^1.0.14",
+    "@dannadori/opencv-worker-js": "^1.0.7",
     "@tensorflow-models/facemesh": "0.0.4",
     "@testing-library/jest-dom": "^4.2.4",
     "@testing-library/react": "^9.3.2",

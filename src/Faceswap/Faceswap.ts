@@ -35,13 +35,11 @@ export class FaceSwap {
   
   
     swapFace(videoFrame:HTMLCanvasElement, maskPrediction:facemesh.AnnotatedPrediction[]):HTMLCanvasElement{
-      console.log("FM 1-1")
       if(this._maskImage){
         const gl = this.glCanvas.getContext("webgl")!
         this.frd.drawFacemesh(gl, videoFrame, maskPrediction)
       }
       const ctx = this.glCanvasOut.getContext("2d")!
-      console.log("FM 1-2")
       ctx.fillStyle = "rgba(0,0,0,0.0)";
       ctx.clearRect(0,0,this.glCanvasOut.width,this.glCanvasOut.height)
       ctx.fillRect(0,0,this.glCanvasOut.width,this.glCanvasOut.height)

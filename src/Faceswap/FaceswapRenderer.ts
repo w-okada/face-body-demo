@@ -135,7 +135,7 @@ export class FacemeshRenderer{
         for (let i = 0; i < vtx_counts; i ++){
             let alpha = 1.0
             for (let j = 0; j < face_countour_idx.length; j ++){
-                if (i == face_countour_idx[j]){
+                if (i === face_countour_idx[j]){
                     alpha = 0.8
                     break
                 }
@@ -197,19 +197,11 @@ export class FacemeshRenderer{
             
             const s_srctex_region = this.calc_size_to_fit (tex_w, tex_h, tex_w, tex_h);
 
-            let color = [1.0, 1.0, 1.0, 1.0]
-            let radius = 5;
             let tx = s_srctex_region.tex_x;
             let ty = s_srctex_region.tex_y;
-            let tw = s_srctex_region.tex_w;
-            let th = s_srctex_region.tex_h;
             let scale = s_srctex_region.scale;
-            let flip_h = false;
 
             gl.disable (gl.DEPTH_TEST);
-
-            let flip = 0
-            //r2d.draw_2d_texture (gl, texid, tx, ty, tw, th, flip)
 
             let mask_color = [0.9, 0.9, 0.9, 0.99];
 
@@ -230,15 +222,12 @@ export class FacemeshRenderer{
                         face_vtx[3 * i + 2] = p[2];
 
                         let q = mask_keypoints[i];
-                        face_uv [2 * i + 0] = q[0] / this.masktexImage!.width;
-                        face_uv [2 * i + 1] = q[1] / this.masktexImage!.height;
+                        face_uv[2 * i + 0] = q[0] / this.masktexImage!.width;
+                        face_uv[2 * i + 1] = q[1] / this.masktexImage!.height;
 
-                        if (flip_h){
-                            face_vtx[3 * i + 0] = (tex_w - p[0]) * scale + tx;
-                        }
                     }
                     console.log("predface", i)
-                    this.draw_facemesh_tri_tex(gl, this.masktexId, face_vtx, face_uv, mask_color, false, flip_h)
+                    this.draw_facemesh_tri_tex(gl, this.masktexId, face_vtx, face_uv, mask_color)
                 }
             }
     }
@@ -252,16 +241,13 @@ export class FacemeshRenderer{
         let scaled_w, scaled_h;
         let offset_x, offset_y;
     
-        if (win_aspect > tex_aspect)
-        {
+        if (win_aspect > tex_aspect){
             scale = win_h / src_h;
             scaled_w = scale * src_w;
             scaled_h = scale * src_h;
             offset_x = (win_w - scaled_w) * 0.5;
             offset_y = 0;
-        }
-        else
-        {
+        }else{
             scale = win_w / src_w;
             scaled_w = scale * src_w;
             scaled_h = scale * src_h;
@@ -287,13 +273,12 @@ export class FacemeshRenderer{
 
 
     /////
-    draw_facemesh_tri_tex = (gl:WebGLRenderingContext, texid:any, vtx:any[], uv:any[], color:number[], drill_eye_hole:boolean, flip_h:boolean)=> {
+    draw_facemesh_tri_tex = (gl:WebGLRenderingContext, texid:any, vtx:any[], uv:any[], color:number[])=> {
         const matMV     = new Array(16);
         const matPMV    = new Array(16);
     
         gl.enable (gl.CULL_FACE);
-        if (flip_h)
-            gl.frontFace (gl.CW);
+
     
         gl.useProgram (this.program);
     
